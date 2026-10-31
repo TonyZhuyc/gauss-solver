@@ -22,63 +22,27 @@
 
 <script src="gauss.js"></script>
 <script>
-const MAXN = 100;
-const STRIDE = MAXN + 1;
-
 Module.onRuntimeInitialized = () => {
-  const solve = Module.cwrap('solve_linear_system', 'number', ['number', 'number', 'number']);
+  const solve = Module.cwrap('solve_linear_system_string', 'string', ['string']);
 
   document.getElementById('go').onclick = () => {
     const out = document.getElementById('output');
-    const n = parseInt(document.getElementById('n').value, 10);
+    const n = document.getElementById('n').value;
+    const matrix = document.getElementById('matrix').value;
     
-    if (!(n >= 1 && n <= MAXN)) { 
-      out.textContent = '错误：n 必须在 1 到 100 之间'; 
-      return; 
+    if (!matrix.trim()) {
+      out.textContent = '请输入矩阵数据';
+      return;
     }
 
-    const lines = document.getElementById('matrix').value.trim().split(/\n+/);
-    if (lines.length < n) { 
-      out.textContent = '错误：输入的行数不足'; 
-      return; 
-    }
-
-    const aug = new Float64Array(MAXN * STRIDE);
-    for (let i = 0; i < n; i++) {
-      const parts = lines[i].trim().split(/\s+/).map(Number);
-      if (parts.length < n + 1 || parts.some(isNaN)) {
-        out.textContent = `错误：第 ${i+1} 行数据格式不对，或者数字数量不足 ${n+1} 个`;
-        return;
-      }
-      for (let j = 0; j <= n; j++) {
-        aug[i * STRIDE + j] = parts[j];
-      }
-    }
-
-    const bpe = 8; 
-    const augPtr = Module._malloc(aug.length * bpe);
-    const xPtr = Module._malloc(n * bpe);
-
-    const heap64 = new Float64Array(Module.HEAPU8.buffer);
+    const input = n + "\n" + matrix;
     
-    heap64.set(aug, augPtr / bpe);
-    heap64.fill(0, xPtr / bpe, xPtr / bpe + n);
-
-    const ok = solve(augPtr, n, xPtr);
-
-    if (!ok) {
-      out.textContent = '计算失败：对角主元精确等于 0（可能是奇异矩阵），无法继续。';
-    } else {
-      const x = heap64.subarray(xPtr / bpe, xPtr / bpe + n);
-      let s = '解为：\n';
-      for (let i = 0; i < n; i++) {
-        s += `x${i+1} = ${x[i]}\n`;
-      }
-      out.textContent = s;
+    try {
+      const result = solve(input);
+      out.textContent = result;
+    } catch (e) {
+      out.textContent = "调用出错：" + e.message;
     }
-
-    Module._free(augPtr);
-    Module._free(xPtr);
   };
 };
 </script>
